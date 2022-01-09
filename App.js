@@ -1,7 +1,16 @@
+import uploadToAnonymousFilesAsync from 'anonymous-files'
 import * as ImagePicker from 'expo-image-picker'
+import * as Sharing from 'expo-sharing'
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import {
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 import logo from './assets/logo.png'
 
 export default function App() {
@@ -15,12 +24,27 @@ export default function App() {
     }
 
     const pickerResult = await ImagePicker.launchImageLibraryAsync()
-
     if (pickerResult.cancelled === true) {
       return
     }
 
-    setSelectedImage({ localUri: pickerResult.uri })
+    if (Platform.OS === 'web') {
+      const remoteUri = await uploadToAnonymousFilesAsync(pickerResult.uri)
+      setSelectedImage({ localUri: pickerResult.uri, remoteUri })
+    } else {
+      setSelectedImage({ localUri: pickerResult.uri, remoteUri: null })
+    }
+  }
+
+  const openShareDialogAsync = async () => {
+    if (Platform.OS === 'web') {
+      alert(`The image is available for sharing at ${selectedImage.remoteUri}`)
+    }
+    if (!(await Sharing.isAvailableAsync())) {
+      alert('The image is available for sharing at ')
+      return
+    }
+    await Sharing.shareAsync(selectedImage.localUri)
   }
 
   if (selectedImage !== null) {
@@ -30,6 +54,9 @@ export default function App() {
           source={{ uri: selectedImage.localUri }}
           style={styles.thumbnail}
         />
+        <TouchableOpacity onPress={openShareDialogAsync} style={styles.button}>
+          <Text style={styles.buttonText}>Share this photo</Text>
+        </TouchableOpacity>
       </View>
     )
   }
